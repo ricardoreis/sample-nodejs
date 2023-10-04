@@ -5,14 +5,11 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const version = process.env.VERSION || 'v7';
-const dbName = `bitbra80_genichat_${version}`;
-
 const connection = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    database: dbName
+    database: process.env.DB_NAME
 });
 
 export const testConnection = async () => {
@@ -32,6 +29,17 @@ export const insertData = async (data) => {
     } catch (err) {
         console.error(err);
         throw err;
+    }
+};
+
+// Função para inserir um evento no banco de dados
+export const insertEvent = async (eventValue) => {
+    try {
+        const query = 'INSERT INTO wzap_events (event) VALUES (?)';
+        await connection.execute(query, [eventValue]);
+        console.log('Evento inserido com sucesso!');
+    } catch (error) {
+        console.error("Erro ao inserir evento:", error);
     }
 };
 

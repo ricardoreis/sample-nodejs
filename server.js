@@ -4,7 +4,7 @@ import express from 'express';
 import webhookRoutes from './routes.js';
 
 const app = express();
-const port = 8080; // Escolha a porta que desejar
+const port = 3000; // Escolha a porta que desejar
 
 app.use(express.json());
 
@@ -12,7 +12,6 @@ app.use(express.json());
 app.get('/', (req, res) => {
   res.send('hello world');
 });
-
 
 app.use('/api', webhookRoutes); // Adicione esta linha para montar as rotas
 

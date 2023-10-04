@@ -6,7 +6,7 @@ import dataStore from './dataStore.js';
 
 
 function sendChunkContent(eventData, chunkContent, quote){
-    console.log("quote: "+quote);
+    // console.log("quote: "+quote);
     // console.log("Enviando mensagem: "+chunkContent);
     let url = 'https://api.wzap.chat/v1/messages';
     
@@ -35,7 +35,7 @@ function sendChunkContent(eventData, chunkContent, quote){
 
     fetch(url, options)
     .then(res => res.json())
-    .then(json => console.log(json))
+    // .then(json => console.log(json))
     // .then(json => console.log("Mensagem enviada: "+chunkContent))
     .catch(err => console.error('error:' + err));
 }
@@ -66,7 +66,7 @@ function sendReaction(eventData, reaction) {
 
     fetch(url, options)
     .then(res => res.json())
-    .then(json => console.log(json))
+    // .then(json => console.log(json))
     .catch(err => console.error('error:' + err));
 }
 
@@ -94,7 +94,7 @@ function sendQuote(eventData, message) {
 
     fetch(url, options)
     .then(res => res.json())
-    .then(json => console.log(json))
+    // .then(json => console.log(json))
     .catch(err => console.error('error:' + err));
 }
 
@@ -125,7 +125,7 @@ function send(eventData, message){
 
     fetch(url, options)
     .then(res => res.json())
-    .then(json => console.log(json))
+    // .then(json => console.log(json))
     // .then(json => console.log("Mensagem enviada: "+message))
     .catch(err => console.error('error:' + err));
 

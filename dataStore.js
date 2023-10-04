@@ -1,8 +1,13 @@
 // dataStore.js
 class Contact {
-    constructor(phone) {
+    constructor(phone, subscriptionPlan = 'free') {
         this.phone = phone;
         this.history = [];
+        this.lastMessage = null; // Armazena a última mensagem enviada pelo contato
+        this.subscriptionPlan = subscriptionPlan; // Novo atributo para armazenar o plano de assinatura
+        this.interactionCount = 10; // Novo atributo para armazenar a quantidade de interações
+        this.waitCount = 1;
+        this.waitingTime = null;
     }
 
     addToHistory(role, content) {
@@ -11,6 +16,68 @@ class Contact {
             "content": content
         });
     }
+
+    setLastMessage(eventData) {
+        this.lastMessage = {
+            data: eventData,
+            timestamp: new Date().toISOString() // Marca o momento exato que o contato enviou a última mensagem
+        };
+    }
+
+    getLastMessage() {
+        return this.lastMessage;
+    }
+
+    // Método para obter o plano de assinatura do contato
+    getSubscriptionPlan() {
+        return this.subscriptionPlan;
+    }
+
+     // Método para alterar o plano de assinatura do contato
+     setSubscriptionPlan(newPlan) {
+        if (['free', 'premium'].includes(newPlan)) {
+            this.subscriptionPlan = newPlan;
+            console.log(`Plano de assinatura atualizado para: ${newPlan}`);
+        } else {
+            console.log("Plano de assinatura inválido. Por favor, escolha entre 'free' e 'premium'.");
+        }
+    }
+
+    // Método para obter a quantidade de interações
+    getInteractionCount() {
+        return this.interactionCount;
+    }
+
+    // Método para decrementar a quantidade de interações
+    decrementInteraction() {
+        if (this.interactionCount > 0) {
+            this.interactionCount--;
+            console.log(`Quantidade de interações decrementada. Valor atual: ${this.interactionCount}`);
+        } else {
+            console.log("A quantidade de interações já está em zero. Não pode ser reduzida ainda mais.");
+        }
+    }
+
+    setWaitingTime(){
+        let waitCount = this.waitCount;
+        this.waitingTime = Date.now() + (Math.pow(2, waitCount)  * 60 * 1000);
+        this.waitCount++;
+    }
+
+    getWaitingTime(){
+        const timestamp = Date.now();
+        let diffMillis = this.waitingTime - timestamp;
+        if(diffMillis>0){
+            let diffMinutes = diffMillis / (1000 * 60);
+            // console.log(`O tempo de espera é de aproximadamente ${Math.round(diffMinutes)} minutos.`);
+            // console.log(`O tempo de espera é de aproximadamente ${diffMinutes} minutos.`);
+            return diffMinutes
+        }else{
+            return 0;
+        }
+    }
+
+
 }
 
 class DataStore {
