@@ -1,0 +1,59 @@
+<!-- views/contact.ejs -->
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Configurações</title>
+        <!-- Bootstrap CSS -->
+        <link
+            rel="stylesheet"
+            href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+        />
+        <!-- Se necessário, inclua também o JavaScript/jQuery do Bootstrap e Popper.js -->
+        <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    </head>
+    <body>
+        <div class="container mt-5">
+            <!-- Container do Bootstrap para centralizar o conteúdo -->
+            <h2 class="mb-4">Configurações</h2>
+            <div class="card">
+                <!-- Card do Bootstrap para estilizar os detalhes -->
+                <div class="card-body">
+                    <p><strong>Telefone:</strong> <%= contact.phone %></p>
+            
+                    <p>
+                        <strong>Plano:</strong> <%=
+                        contact.subscriptionPlan %>
+                    </p>
+                    
+                  <hr>
+                    <p>
+                        <strong>Reações em mensagens:</strong>
+                        <div class="custom-control custom-switch">
+                            <input type="checkbox" class="custom-control-input" id="sendReactionSwitch" <%= contact.sendReaction ? 'checked' : '' %>>
+                            <label class="custom-control-label" for="sendReactionSwitch">Marcar minhas mensagens com emojis 🕑 💬</label>
+                        </div>
+                    </p>
+                    <script>
+                        // Adicionar um listener ao switch para enviar a requisição quando for alternado
+                        document.getElementById('sendReactionSwitch').addEventListener('change', function() {
+                            fetch('/api/toggleSendReaction/' + '<%= contact.id %>', {
+                                method: 'POST'
+                            }).then(response => response.json()).then(data => {
+                                if(data.success) {
+                                    alert('sendReaction updated!');
+                                } else {
+                                    alert('Error updating sendReaction.');
+                                    // Revert switch state
+                                    this.checked = !this.checked;
+                                }
+                            });
+                        });
+                    </script>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

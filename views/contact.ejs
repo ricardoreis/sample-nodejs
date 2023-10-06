@@ -1,0 +1,75 @@
+<!-- views/contact.ejs -->
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Contact Details</title>
+        <!-- Bootstrap CSS -->
+        <link
+            rel="stylesheet"
+            href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+        />
+        <!-- Se necessário, inclua também o JavaScript/jQuery do Bootstrap e Popper.js -->
+        <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    </head>
+    <body>
+        <div class="container mt-5">
+            <!-- Container do Bootstrap para centralizar o conteúdo -->
+            <h2 class="mb-4">Contact Details</h2>
+            <div class="card">
+                <!-- Card do Bootstrap para estilizar os detalhes -->
+                <div class="card-body">
+                    <p><strong>Phone:</strong> <%= contact.phone %></p>
+                    <p>
+                        <strong>Last Message body:</strong> <%=
+                        contact.lastMessage.data.data.body %>
+                    </p>
+                    <p>
+                        <strong>Last Message timestamp:</strong> <%=
+                        contact.lastMessage.timestamp %>
+                    </p>
+                    <p>
+                        <strong>Subscription Plan:</strong> <%=
+                        contact.subscriptionPlan %>
+                    </p>
+                    <p>
+                        <strong>Interaction Count:</strong> <%=
+                        contact.interactionCount %>
+                    </p>
+                    <p>
+                        <strong>Waiting Time:</strong> <%= contact.waitingTime
+                        %> minutes
+                    </p>
+                    <strong>sendReaction:</strong> <%= contact.sendReaction
+                        %>
+                    </p>
+                    <p>
+                        <strong>sendReaction:</strong>
+                        <div class="custom-control custom-switch">
+                            <input type="checkbox" class="custom-control-input" id="sendReactionSwitch" <%= contact.sendReaction ? 'checked' : '' %>>
+                            <label class="custom-control-label" for="sendReactionSwitch">Toggle sendReaction</label>
+                        </div>
+                    </p>
+                    <script>
+                        // Adicionar um listener ao switch para enviar a requisição quando for alternado
+                        document.getElementById('sendReactionSwitch').addEventListener('change', function() {
+                            fetch('/api/toggleSendReaction/' + '<%= contact.phone %>', {
+                                method: 'POST'
+                            }).then(response => response.json()).then(data => {
+                                if(data.success) {
+                                    alert('sendReaction updated!');
+                                } else {
+                                    alert('Error updating sendReaction.');
+                                    // Revert switch state
+                                    this.checked = !this.checked;
+                                }
+                            });
+                        });
+                    </script>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

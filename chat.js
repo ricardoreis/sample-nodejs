@@ -41,8 +41,9 @@ function suggestUpsell(eventData) {
     }, 15000);
 }
 
-function createMessages(promptContent, historyMessages) {
+function createMessages(name, url, historyMessages) {
     // Primeira parte: prompt
+    let promptContent = promptTemplates.defaut(name, url);
     let messages = [
         {
             role: 'system',
@@ -76,12 +77,16 @@ function trimHistory(history) {
 // Recebe mensgem de usuário, cria o array messagens com o prompt, hitorico e ultima mensagem
 async function createResponse(eventData, quote) {
     let contact = getContact(eventData);
+    let reactionSettings = contact.getSendReaction();
     let role = 'user'; // ou "assistant" ou "system", dependendo da fonte
     let content = eventData.data.body; // entrada dinâmica
     contact.addToHistory(role, content);
     let history = contact.history;
     history = trimHistory(history);
-    let messages = createMessages(promptTemplates.defaut, history);
+    let name = 'Ricardo';
+    let id = contact.id;
+    let url = `https://shark-app-bjcoo.ondigitalocean.app/admin/id/${id}`;
+    let messages = createMessages(name, url, history);
     console.log(messages);
     try {
         const completion = await openai.chat.completions.create({
@@ -94,8 +99,10 @@ async function createResponse(eventData, quote) {
         let intro = false;
         let longAnswer = false;
         let firstSentence = true;
-        // sendReaction(eventData, "💬")
-        // setTimeout(() => sendReaction(eventData, "💬"), 3000);
+        if (reactionSettings){
+            sendReaction(eventData, '💬');
+            // setTimeout(() => sendReaction(eventData, '💬'), 3000);
+        }
         for await (const chunk of completion) {
             console.log(chunk.choices[0].delta);
             // Verifique se chunk.choices[0].delta.content possui conteúdo
@@ -105,6 +112,9 @@ async function createResponse(eventData, quote) {
                 if (cancel) {
                     cancel = false;
                     console.log('cancelando...');
+                    if (reactionSettings){
+                        sendReaction(eventData, '-');
+                        }
                     return;
                 }
                 // Se a possuir uma introdução
@@ -112,7 +122,7 @@ async function createResponse(eventData, quote) {
                     if (contact.getInteractionCount() < 0) {
                         suggestUpsell(eventData);
                         // Removendo da lista de resposta
-                        removeFromResponding(eventData.data.fromNumber);
+                        removeFromResponding(contact);
                         return;
                     }
                     // console.log("Texto da introducao");
@@ -161,8 +171,10 @@ async function createResponse(eventData, quote) {
         }
         // Decrementando a quantidade de interações
         contact.addToHistory('assistant', response);
-        // sendReaction(eventData, "-")
-        // setTimeout(() => sendReaction(eventData, "-"), 10000);
+        if (reactionSettings){
+        // sendReaction(eventData, '-');
+        setTimeout(() => sendReaction(eventData, '-'), 5000);
+        }
     } catch (error) {
         console.error('Ocorreu um erro ao buscar a resposta:', error.message);
         console.error('Código do erro:', error.code);
