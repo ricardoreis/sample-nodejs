@@ -83,7 +83,7 @@ async function createResponse(eventData, quote) {
     contact.addToHistory(role, content);
     let history = contact.history;
     history = trimHistory(history);
-    let name = 'Ricardo';
+    let name = 'Caso você não souber o nome do usuário, você pode perguntar.';
     let id = contact.id;
     let url = `https://shark-app-bjcoo.ondigitalocean.app/admin/id/${id}`;
     let messages = createMessages(name, url, history);
