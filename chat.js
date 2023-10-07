@@ -8,6 +8,8 @@ import { insertEvent } from './db.js';
 import { chatTemplates } from './messages.js';
 import { promptTemplates } from './prompts.js';
 import Queue from './queue.js';
+import listenAudio from './listenAudio.js';
+
 
 dotenv.config();
 
@@ -76,10 +78,20 @@ function trimHistory(history) {
 
 // Recebe mensgem de usuário, cria o array messagens com o prompt, hitorico e ultima mensagem
 async function createResponse(eventData, quote) {
+    console.log("entrou em createResponse(eventData, quote)");
     let contact = getContact(eventData);
     let reactionSettings = contact.getSendReaction();
     let role = 'user'; // ou "assistant" ou "system", dependendo da fonte
     let content = eventData.data.body; // entrada dinâmica
+    let type = eventData.data.type;
+    console.log(`type: ${type}`);
+    if (type=='audio'){
+        // console.log('chamando listenAudio(eventData);');
+        role = 'system';
+        content = await listenAudio(eventData);
+        content = `O usuário enviou um arquivo de áudio. Whisper transcreveu e a seguir está a transcrição: ${content}`;
+        // console.log(`contet: ${content}`);
+    }
     contact.addToHistory(role, content);
     let history = contact.history;
     history = trimHistory(history);

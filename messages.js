@@ -19,7 +19,8 @@ export const messageTypes = {
     },
     'audio': {
         log: 'O usuário enviou: audio',
-        response: 'Vi que você me enviou um áudio. Infelizmente, ainda não consigo escutar áudios. Porém, em breve, receberei uma atualização para ouvir e interpretar áudios. Também poderei criar e enviar respostas em áudio para você em breve.'
+        response: 'Ouvindo...'
+        // response: 'Vi que você me enviou um áudio. Infelizmente, ainda não consigo escutar áudios. Porém, em breve, receberei uma atualização para ouvir e interpretar áudios. Também poderei criar e enviar respostas em áudio para você em breve.'
     },
     'video': {
         log: 'O usuário enviou: video',
