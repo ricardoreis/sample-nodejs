@@ -15,23 +15,27 @@ router.post('/webhook', (req, res) => {
 
     //   console.log('Dados do Webhook recebidos:', eventData);
     if (eventData && eventData.event === 'message:in:new') {
+        if (!eventData.produtivi) {
+            eventData.produtivi = {};
+        }
+        eventData.produtivi.role = 'user';
         let contact = getContact(eventData);
         let type = eventData.data.type;
         let reactionSettings = contact.getSendReaction();
-        if (reactionSettings){
+        if (reactionSettings) {
             sendReaction(eventData, '🕑');
         }
-        if (type == 'audio'){
-            if (reactionSettings){
+        if (type == 'audio') {
+            if (reactionSettings) {
                 sendReaction(eventData, '👂');
             }
             send(eventData, "Ouvindo...");
         }
         // Verificar o tipo de mensagem
-        
+
         console.log(`routes.js type: ${type}`);
         let quickRespomnse = 'Me ligou? Infelizmente não consigo atender ligação agora, mas me envie um áudio que eu respondo!';
-        
+
         if (messageTypes[type]) {
             console.log(`messageTypes[type]`);
             quickRespomnse = messageTypes[type].response;
@@ -40,7 +44,7 @@ router.post('/webhook', (req, res) => {
         }
         if (type != 'text' && type != 'audio') {
             send(eventData, quickRespomnse);
-            if (reactionSettings){
+            if (reactionSettings) {
                 setTimeout(() => sendReaction(eventData, '-'), 3000);
             }
         } else {

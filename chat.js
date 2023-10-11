@@ -1,5 +1,4 @@
-// chat.js
-// This code is for v4 of the openai package: npmjs.com/package/openai
+// file: chat.js
 import dotenv from 'dotenv';
 import OpenAI from 'openai';
 import { sendChunkContent, send, sendReaction } from './wzapchat.js';
@@ -9,106 +8,140 @@ import { chatTemplates } from './messages.js';
 import { promptTemplates } from './prompts.js';
 import Queue from './queue.js';
 import listenAudio from './listenAudio.js';
-
+import { searchGoogle } from "./serpAPI.js";
 
 dotenv.config();
 
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const MODEL_NAME = 'gpt-4';
+const UPSALE_LINK_DELAY = 10000;
+const REPLYING_SOON_DELAY = 15000;
+const SHARK_APP_URL = 'https://shark-app-bjcoo.ondigitalocean.app/admin/id/';
+const HISTORY_CHAR_LIMIT = 20000;
+const MAX_CHARACTER_LIMIT = 14000;
+
+
 const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+    apiKey: OPENAI_API_KEY,
 });
 
 let respondingTo = [];
-
 let queue = new Queue();
 
 function removeFromResponding(contact) {
-    let index = respondingTo.indexOf(contact);
+    const index = respondingTo.indexOf(contact);
     if (index > -1) {
         respondingTo.splice(index, 1);
-        console.log(
-            'removeFromResponding() Número removido do array: ' + contact
-        );
     }
 }
 
 function suggestUpsell(eventData) {
-    // Enviando mensagens
     send(eventData, chatTemplates.premiumUpsellMessage);
     insertEvent(eventData);
-    setTimeout(() => {
-        send(eventData, chatTemplates.premiumUpsellLink);
-    }, 10000);
-    setTimeout(() => {
-        send(eventData, chatTemplates.dontWorryReplyingSoon);
-    }, 15000);
+    setTimeout(() => send(eventData, chatTemplates.premiumUpsellLink), UPSALE_LINK_DELAY);
+    setTimeout(() => send(eventData, chatTemplates.dontWorryReplyingSoon), REPLYING_SOON_DELAY);
+}
+
+function extractNameFromEventData(eventData) {
+    const formattedShortName = eventData.data.chat.contact.formattedShortName;
+    const shortName = eventData.data.chat.contact.shortName;
+
+    if (formattedShortName) {
+        return `O nome da pessoa que está falando com você é ${formattedShortName}.`;
+    } else if (shortName) {
+        return `O nome da pessoa que está falando com você é ${shortName}.`;
+    }
+    return '';
+}
+
+async function handleAudioContent(eventData) {
+    const content = await listenAudio(eventData);
+    return `O usuário enviou um arquivo de áudio. Whisper transcreveu e a seguir está a transcrição: ${content}`;
 }
 
 function createMessages(name, url, historyMessages) {
-    // Primeira parte: prompt
-    let promptContent = promptTemplates.defaut(name, url);
-    let messages = [
+    const promptContent = promptTemplates.default(name, url);
+    const messages = [
         {
             role: 'system',
             content: promptContent,
         },
+        ...historyMessages
     ];
-    // Segunda parte: history
-    messages = messages.concat(historyMessages);
-    // // Terceira parte: lastMessage
-    // messages.push({
-    //     role: 'user',
-    //     content: lastMessageContent,
-    // });
     return messages;
 }
 
 function trimHistory(history) {
     // Calcula o total de caracteres no array de history
-    let charCount = history.reduce(
-        (sum, message) => sum + JSON.stringify(message).length,
-        0
-    );
-    // Enquanto o total de caracteres for maior que 1000, remove a mensagem mais antiga
-    while (charCount > 20000 && history.length) {
+    let charCount = history.reduce((sum, message) => sum + JSON.stringify(message).length, 0);
+    // Enquanto o total de caracteres for maior que HISTORY_CHAR_LIMIT, remove a mensagem mais antiga
+    while (charCount > HISTORY_CHAR_LIMIT && history.length) {
         const removedMessage = history.shift(); // Remove e retorna a primeira mensagem
         charCount -= JSON.stringify(removedMessage).length; // Subtrai o tamanho da mensagem removida do total
     }
     return history;
 }
 
+function createEventData(eventData, type, content) {
+    eventData.data.body = content;
+    eventData.data.type = type;
+    if (!eventData.produtivi) {
+        eventData.produtivi = {};
+    }
+    // Adicionando o atributo 'role' com o valor 'system' ao objeto 'produtivi'
+    eventData.produtivi.role = 'system';
+    return eventData;
+}
+
+const processResults = (results, eventData) => {
+    let content = `Lista de resultados de busca:\n${JSON.stringify(results, null, 2)}`;
+    let newEventData = createEventData(eventData, 'text', content);
+    main(newEventData, false);
+}
+
+function handleContent(eventData) {
+    const contact = getContact(eventData);
+    let content = eventData.data.body;
+    if (content.length > MAX_CHARACTER_LIMIT) {
+        if (eventData.produtivi.role == 'user') {
+            contact.addToHistory("system", chatTemplates.truncatedMessage.user(MAX_CHARACTER_LIMIT));
+        }
+        if (eventData.produtivi.role == 'system') {
+            contact.addToHistory("system", chatTemplates.truncatedMessage.system(MAX_CHARACTER_LIMIT));
+        }
+        return content.substring(0, MAX_CHARACTER_LIMIT);
+    }
+    return content;
+}
+
 // Recebe mensgem de usuário, cria o array messagens com o prompt, hitorico e ultima mensagem
 async function createResponse(eventData, quote) {
-    console.log("entrou em createResponse(eventData, quote)");
-    let contact = getContact(eventData);
-    let reactionSettings = contact.getSendReaction();
+    const contact = getContact(eventData);
+    const reactionSettings = contact.getSendReaction();
     let role = 'user'; // ou "assistant" ou "system", dependendo da fonte
-    let content = eventData.data.body; // entrada dinâmica
-    let type = eventData.data.type;
-    console.log(`type: ${type}`);
-    if (type=='audio'){
-        // console.log('chamando listenAudio(eventData);');
+    // let content = eventData.data.body; // entrada dinâmica
+    let content = handleContent(eventData);
+    const type = eventData.data.type;
+
+    if (type == 'audio') {
         role = 'system';
-        content = await listenAudio(eventData);
-        content = `O usuário enviou um arquivo de áudio. Whisper transcreveu e a seguir está a transcrição: ${content}`;
-        // console.log(`contet: ${content}`);
+        content = await handleAudioContent(eventData);
     }
+
+    if (eventData.produtivi && eventData.produtivi.role === 'system') {
+        // Faça algo se 'eventData.produtivi.role' existir e seu valor for 'system'
+        role = 'system';
+    }
+
     contact.addToHistory(role, content);
-    let history = contact.history;
+    let history = trimHistory(contact.history);
     history = trimHistory(history);
-    let formattedShortName = eventData.data.chat.contact.formattedShortName;
-    let shortName = eventData.data.chat.contact.shortName;
-    let name = '';
-    if (formattedShortName) {
-        name = `O nome da pessoa que está falando com você é ${formattedShortName}.`;
-    } else if (shortName) {
-        name = `O nome da pessoa que está falando com você é ${shortName}.`;
-    } else {
-        name = '';
-    }
+    const name = extractNameFromEventData(eventData);
+
     let id = contact.id;
-    let url = `https://shark-app-bjcoo.ondigitalocean.app/admin/id/${id}`;
-    let messages = createMessages(name, url, history);
-    console.log(messages);
+    const url = `${SHARK_APP_URL}${id}`;
+    const messages = createMessages(name, url, history);
+    console.log(`arquivo chat.js messages:\n ${JSON.stringify(messages, null, 2)}`);
     try {
         const completion = await openai.chat.completions.create({
             model: 'gpt-4',
@@ -120,7 +153,9 @@ async function createResponse(eventData, quote) {
         let intro = false;
         let longAnswer = false;
         let firstSentence = true;
-        if (reactionSettings){
+        let startGoogle = false;
+        let searchTerm = '';
+        if (reactionSettings) {
             sendReaction(eventData, '💬');
             // setTimeout(() => sendReaction(eventData, '💬'), 3000);
         }
@@ -130,12 +165,15 @@ async function createResponse(eventData, quote) {
             if (chunk.choices[0].delta.content) {
                 accumulatedContent += chunk.choices[0].delta.content;
                 response += chunk.choices[0].delta.content;
-                if (cancel) {
+                if (startGoogle) {
+                    searchTerm += chunk.choices[0].delta.content;
+                }
+                if (cancel && eventData.produtivi && eventData.produtivi.role !== 'system') {
                     cancel = false;
                     console.log('cancelando...');
-                    if (reactionSettings){
+                    if (reactionSettings) {
                         sendReaction(eventData, '-');
-                        }
+                    }
                     return;
                 }
                 // Se a possuir uma introdução
@@ -153,6 +191,15 @@ async function createResponse(eventData, quote) {
                         ''
                     );
                 }
+
+                //STARTGOOGLE
+                if (accumulatedContent.includes('STARTGOOGLE')) {
+                    startGoogle = true;
+                    accumulatedContent = accumulatedContent.replace(
+                        'STARTGOOGLE',
+                        '*Buscando:*'
+                    );
+                }
                 if (accumulatedContent.endsWith('INTROEND')) {
                     accumulatedContent = accumulatedContent.replace(
                         'INTROEND',
@@ -165,6 +212,35 @@ async function createResponse(eventData, quote) {
                     longAnswer = true;
                     contact.decrementInteraction();
                     // console.log("Quantidade de interações após decrementar:", contact.getInteractionCount());
+                }
+                if (accumulatedContent.endsWith('ENDGOOGLE')) {
+                    startGoogle = false;
+                    accumulatedContent = accumulatedContent.replace(
+                        'ENDGOOGLE',
+                        '\nAguarde...'
+                    );
+                    searchTerm = searchTerm.replace(
+                        'ENDGOOGLE',
+                        ''
+                    );
+                    // console.log(`Estou pesquisando por: ${searchTerm}`);
+                    // listaDeResultados = buscarNoGoogle(searchTerm);
+                    // let eventDataListadeResultados = criarEventData(eventData, type, content);
+                    // createResponse(eventData, quote);
+
+                    searchGoogle(searchTerm)
+                        .then((results) => {
+                            processResults(results, eventData);
+
+                        })
+                        .catch((error) => {
+                            console.error("Erro ao buscar os resultados:", error);
+                            let errorResult = `Infelizmente, não consegui ler o resultado da busca devido a um erro interno no meu sistema. Vou avisar a minha equipe técnica para corrigir essa falha. Agradeço sua compreensão.\n
+                        Mas tente acessar esse link, provavelmente aqui tem o que você precisa: https://www.google.com/search?q=${encodeURIComponent(searchTerm)}`;
+                            processResults(errorResult, eventData);
+                        });
+
+
                 }
                 if (
                     !longAnswer &&
@@ -192,9 +268,9 @@ async function createResponse(eventData, quote) {
         }
         // Decrementando a quantidade de interações
         contact.addToHistory('assistant', response);
-        if (reactionSettings){
-        // sendReaction(eventData, '-');
-        setTimeout(() => sendReaction(eventData, '-'), 5000);
+        if (reactionSettings) {
+            // sendReaction(eventData, '-');
+            setTimeout(() => sendReaction(eventData, '-'), 5000);
         }
     } catch (error) {
         console.error('Ocorreu um erro ao buscar a resposta:', error.message);
@@ -209,9 +285,8 @@ async function createResponse(eventData, quote) {
 }
 // Fim createResponse()
 
-// Verifica se o usuário já está em DataStore, se nao estiver acrescentar
 function getContact(eventData) {
-    let fromNumber = eventData.data.fromNumber;
+    const fromNumber = eventData.data.fromNumber;
     let contact = dataStore.findContactByPhone(fromNumber);
     if (!contact) {
         contact = dataStore.addNewContact(fromNumber);
@@ -219,64 +294,42 @@ function getContact(eventData) {
     return contact;
 }
 
-// Verifica se o modelo já está respondendo esse usuário
 function isReplyingToThisContact(contact) {
     if (respondingTo.indexOf(contact) === -1) {
         respondingTo.push(contact);
         return false;
-    } else {
-        return true;
     }
+    return true;
 }
 
 let cancel = false;
+
 async function main(eventData, quote) {
-    // send(eventData, "_digitando..._")
     console.log('\nMensagem recebida:', eventData.data.body);
-    let contact = getContact(eventData);
-    let replyingToThisContact = isReplyingToThisContact(contact);
+    const contact = getContact(eventData);
+    const replyingToThisContact = isReplyingToThisContact(contact);
     if (replyingToThisContact) {
-        // já está respondendo, cancelar e reformular o prompt ou colocar na fila
-        console.log(
-            '******* já está respondendo, cancelar e reformular o prompt ou colocar na fila *******'
-        );
-        let previousMessage = {
-            timestamp: contact.lastMessage.timestamp,
-        };
-        let currentMessage = {
-            timestamp: new Date().toISOString(),
-        };
-        // Converta as strings ISO 8601 para objetos Date
+        const previousMessage = { timestamp: contact.lastMessage.timestamp };
+        const currentMessage = { timestamp: new Date().toISOString() };
         const previousDate = new Date(previousMessage.timestamp);
         const currentDate = new Date(currentMessage.timestamp);
-        // Calcule a diferença em milissegundos
         const differenceInMillis = currentDate - previousDate;
-        // Verifique se a diferença é menor que 10 segundos
+
         if (differenceInMillis < 10 * 1000) {
-            console.log(
-                'A mensagem atual foi recebida menos de 10 segundos após a mensagem anterior.'
-            );
             cancel = true;
             await createResponse(eventData, quote);
         } else {
-            console.log(
-                'A mensagem atual foi recebida 10 segundos ou mais após a mensagem anterior.\nMensagem adicionada na fila.'
-            );
             queue.enqueue(eventData);
         }
     } else {
-        //não está respondendo para esse contanto, entao responder
         contact.setLastMessage(eventData);
         await createResponse(eventData, quote);
         removeFromResponding(contact);
         if (queue.length() > 0) {
-            console.log('A fila nao está vazia.');
             main(queue.peek(), true);
             queue.dequeue();
-        } else {
-            return;
         }
     }
 }
 
-export default main; // Exporta a função main
+export default main; 

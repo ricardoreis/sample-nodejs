@@ -1,4 +1,9 @@
-//messageTypes.js
+//file: messageTypes.js
+
+const truncatedMessage = {
+    user: (MAX_CHARACTER_LIMIT) => `O usuário enviou uma mensagem que excedeu o limite máximo de ${MAX_CHARACTER_LIMIT} caracteres. A mensagem foi truncada para conter apenas os primeiros ${MAX_CHARACTER_LIMIT} caracteres. Caso necessário, informe esse fato em sua resposta. A seguir, a mensagem já truncada:`,
+    system: (MAX_CHARACTER_LIMIT) => `O sistema de busca na internet retornou uma mensagem que excedeu o limite máximo de ${MAX_CHARACTER_LIMIT} caracteres. A mensagem foi truncada para conter apenas os primeiros ${MAX_CHARACTER_LIMIT} caracteres. Caso necessário, informe esse fato em sua resposta. A seguir, a mensagem já truncada:`,
+};
 
 export const messageTypes = {
     'text': {
@@ -42,7 +47,6 @@ export const messageTypes = {
 
 export const chatTemplates = {
     premiumUpsellMessage: `Já te respondo, aguarde!
-No momento, estou atendendo nossos clientes Premium. 
 Se quiser prioridade, considere se tornar um cliente Premium. Você terá respostas imediatas e outras vantagens exclusivas! 
 `,
 
@@ -51,8 +55,11 @@ Se quiser prioridade, considere se tornar um cliente Premium. Você terá respos
     https://produtivi.com.br/`,
 
     dontWorryReplyingSoon: `Mas não se preocupe, vou responder à sua mensagem assim que possível.`,
-        
+
     context_length_exceeded: `A mensagem que você enviou é extensa demais, infelizmente não consigo ler e processar textos grandes. 
-Por favor, reduza o tamanho do texto e me envie novamente.`
+Por favor, reduza o tamanho do texto e me envie novamente.`,
+
+    truncatedMessage: truncatedMessage,
+
 };
 
