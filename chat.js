@@ -101,8 +101,9 @@ const processResults = (results, eventData) => {
 
 function handleContent(eventData) {
     const contact = getContact(eventData);
+    let type = eventData.data.type;
     let content = eventData.data.body;
-    if (content.length > MAX_CHARACTER_LIMIT) {
+    if (type == "text" && content.length > MAX_CHARACTER_LIMIT) {
         if (eventData.produtivi.role == 'user') {
             contact.addToHistory("system", chatTemplates.truncatedMessage.user(MAX_CHARACTER_LIMIT));
         }
