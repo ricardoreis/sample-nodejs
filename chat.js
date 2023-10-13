@@ -17,7 +17,7 @@ const MODEL_NAME = 'gpt-4';
 const UPSALE_LINK_DELAY = 10000;
 const REPLYING_SOON_DELAY = 15000;
 const SHARK_APP_URL = 'https://shark-app-bjcoo.ondigitalocean.app/admin/id/';
-const HISTORY_CHAR_LIMIT = 20000;
+const HISTORY_CHAR_LIMIT = 19000;
 const MAX_CHARACTER_LIMIT = 14000;
 
 
@@ -179,12 +179,12 @@ async function createResponse(eventData, quote) {
                 }
                 // Se a possuir uma introdução
                 if (accumulatedContent.includes('INTROSTART')) {
-                    if (contact.getInteractionCount() < 0) {
-                        suggestUpsell(eventData);
-                        // Removendo da lista de resposta
-                        removeFromResponding(contact);
-                        return;
-                    }
+                    // if (contact.getInteractionCount() < 0) {
+                    //     suggestUpsell(eventData);
+                    //     // Removendo da lista de resposta
+                    //     removeFromResponding(contact);
+                    //     return;
+                    // }
                     // console.log("Texto da introducao");
                     intro = true;
                     accumulatedContent = accumulatedContent.replace(
@@ -211,7 +211,7 @@ async function createResponse(eventData, quote) {
                     accumulatedContent = '';
                     intro = false;
                     longAnswer = true;
-                    contact.decrementInteraction();
+                    // contact.decrementInteraction();
                     // console.log("Quantidade de interações após decrementar:", contact.getInteractionCount());
                 }
                 if (accumulatedContent.endsWith('ENDGOOGLE')) {
@@ -308,6 +308,12 @@ let cancel = false;
 async function main(eventData, quote) {
     console.log('\nMensagem recebida:', eventData.data.body);
     const contact = getContact(eventData);
+    //Verifica a quantidade de interacoes
+    if (contact.getSubscriptionPlan() == "free" && contact.getInteractionCount() < 11) {
+        suggestUpsell(eventData);
+        removeFromResponding(contact);
+        return;
+    }
     const replyingToThisContact = isReplyingToThisContact(contact);
     if (replyingToThisContact) {
         const previousMessage = { timestamp: contact.lastMessage.timestamp };
@@ -330,6 +336,9 @@ async function main(eventData, quote) {
             main(queue.peek(), true);
             queue.dequeue();
         }
+        // Fim de resposta
+        contact.decrementInteraction();
+        console.log(contact.getSubscriptionPlan());
     }
 }
 

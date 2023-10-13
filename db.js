@@ -2,25 +2,53 @@
 
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
+import fs from 'fs';
 
 dotenv.config();
 
+// HOSTGATOR
+// ---------
+// const connection = mysql.createPool({
+//     host: process.env.DB_HOST,
+//     user: process.env.DB_USER,
+//     password: process.env.DB_PASSWORD,
+//     database: process.env.DB_NAME
+// });
+
+// export const testConnection = async () => {
+//     try {
+//         await connection.query('SELECT 1');
+//         return true;
+//     } catch (error) {
+//         console.error("Erro ao conectar ao banco de dados:", error);
+//         return false;
+//     }
+// };
+// ---------
+
+// DIGITAL OCEAN
 const connection = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME
+    database: process.env.DB_NAME,
+    port: 25060,
+    ssl: {
+        ca: fs.readFileSync('ca-certificate.crt') // substitua 'path_to_your_ca_file' pelo caminho correto para o arquivo CA
+    }
 });
 
 export const testConnection = async () => {
     try {
         await connection.query('SELECT 1');
+        console.log("Conexão com o banco de dados estabelecida com sucesso!");
         return true;
     } catch (error) {
         console.error("Erro ao conectar ao banco de dados:", error);
         return false;
     }
 };
+
 
 export const insertData = async (data) => {
     try {
@@ -60,10 +88,10 @@ export const saveMessageHistory = async (fromNumber, aiNumber, history) => {
             const message = history.shift(); // Remove e retorna o primeiro item do array
             const { role, content } = message;
             let sender, receiver;
-            if(role === "user"){
+            if (role === "user") {
                 sender = fromNumber;
                 receiver = aiNumber;
-            }else{
+            } else {
                 sender = aiNumber;
                 receiver = fromNumber;
             }
