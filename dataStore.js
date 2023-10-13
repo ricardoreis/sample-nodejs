@@ -1,9 +1,9 @@
-// dataStore.js
+// file: dataStore.js
 
 import { v4 as uuidv4 } from 'uuid';
 
 class Contact {
-    constructor(phone, subscriptionPlan = 'free') {
+    constructor(phone, subscriptionPlan = 'free', location = 'Brazil2', language = 'pt-BR', currency = 'BRL', measurementUnit = 'Metric System', temperatureUnit = '°C') {
         this.id = uuidv4();  // Aqui estamos gerando o UUID.
         this.phone = phone;
         this.history = [];
@@ -12,7 +12,12 @@ class Contact {
         this.interactionCount = 10; // Novo atributo para armazenar a quantidade de interações
         this.waitCount = 1;
         this.waitingTime = null;
-        this.sendReaction = true; 
+        this.sendReaction = true;
+        this.location = location;
+        this.language = language;
+        this.currency = currency;
+        this.measurementUnit = measurementUnit;
+        this.temperatureUnit = temperatureUnit;
     }
 
     addToHistory(role, content) {
@@ -88,16 +93,56 @@ class Contact {
         }
     }
 
-        // Método para obter o valor de sendReaction
-        getSendReaction() {
-            return this.sendReaction;
-        }
-    
-        // Método para alternar o valor de sendReaction entre true e false
-        toggleSendReaction() {
-            this.sendReaction = !this.sendReaction;
-            console.log(`sendReaction agora está definido como: ${this.sendReaction}`);
-        }
+    // Método para obter o valor de sendReaction
+    getSendReaction() {
+        return this.sendReaction;
+    }
+
+    // Método para alternar o valor de sendReaction entre true e false
+    toggleSendReaction() {
+        this.sendReaction = !this.sendReaction;
+        console.log(`sendReaction agora está definido como: ${this.sendReaction}`);
+    }
+
+    getLocation() {
+        return this.location;
+    }
+
+    setLocation(newLocation) {
+        this.location = newLocation;
+    }
+
+    getLanguage() {
+        return this.language;
+    }
+
+    setLanguage(newLanguage) {
+        this.language = newLanguage;
+    }
+
+    getCurrency() {
+        return this.currency;
+    }
+
+    setCurrency(newCurrency) {
+        this.currency = newCurrency;
+    }
+
+    getMeasurementUnit() {
+        return this.measurementUnit;
+    }
+
+    setMeasurementUnit(newMeasurementUnit) {
+        this.measurementUnit = newMeasurementUnit;
+    }
+
+    getTemperatureUnit() {
+        return this.temperatureUnit;
+    }
+
+    setTemperatureUnit(newTemperatureUnit) {
+        this.temperatureUnit = newTemperatureUnit;
+    }
 }
 
 class DataStore {
@@ -105,9 +150,10 @@ class DataStore {
         this.contacts = [];
     }
 
-    addNewContact(phone) {
-        const contact = new Contact(phone);
+    addNewContact(phone, subscriptionPlan, location, language, currency) {
+        const contact = new Contact(phone, subscriptionPlan, location, language, currency);
         this.contacts.push(contact);
+        console.log(`dataStore.js contato criado com sucesso!!!!!!!!!`);
         return contact;
     }
 

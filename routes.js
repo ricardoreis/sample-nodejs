@@ -13,7 +13,8 @@ router.post('/webhook', (req, res) => {
     res.sendStatus(200);
     const eventData = req.body;
 
-    //   console.log('Dados do Webhook recebidos:', eventData);
+    // console.log('Dados do Webhook recebidos:');
+    // console.log(JSON.stringify(eventData));
     if (eventData && eventData.event === 'message:in:new') {
         if (!eventData.produtivi) {
             eventData.produtivi = {};
@@ -143,5 +144,11 @@ router.post('/toggleSendReaction/:id', (req, res) => {
         res.status(404).json({ message: 'Contact not found', success: false });
     }
 });
+
+// Rota para obter todos os contatos e suas informações
+router.get('/datastore/all', (req, res) => {
+    res.json(dataStore.contacts);
+});
+
 
 export default router;

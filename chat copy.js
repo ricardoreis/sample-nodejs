@@ -11,12 +11,14 @@ import listenAudio from './listenAudio.js';
 import { searchGoogle } from "./serpAPI.js";
 import { getContact } from './contactUtils.js';
 
+
 dotenv.config();
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const MODEL_NAME = 'gpt-4';
 const UPSALE_LINK_DELAY = 10000;
 const REPLYING_SOON_DELAY = 15000;
+const SHARK_APP_URL = 'https://shark-app-bjcoo.ondigitalocean.app/admin/id/';
 const HISTORY_CHAR_LIMIT = 19000;
 const MAX_CHARACTER_LIMIT = 14000;
 
@@ -42,15 +44,25 @@ function suggestUpsell(eventData) {
     setTimeout(() => send(eventData, chatTemplates.dontWorryReplyingSoon), REPLYING_SOON_DELAY);
 }
 
+function extractNameFromEventData(eventData) {
+    const formattedShortName = eventData.data.chat.contact.formattedShortName;
+    const shortName = eventData.data.chat.contact.shortName;
 
+    if (formattedShortName) {
+        return `O nome da pessoa que está falando com você é ${formattedShortName}.`;
+    } else if (shortName) {
+        return `O nome da pessoa que está falando com você é ${shortName}.`;
+    }
+    return '';
+}
 
 async function handleAudioContent(eventData) {
     const content = await listenAudio(eventData);
     return `O usuário enviou um arquivo de áudio. Whisper transcreveu e a seguir está a transcrição: ${content}`;
 }
 
-function createMessages(eventData, contact, historyMessages) {
-    const promptContent = promptTemplates.default(eventData, contact);
+function createMessages(name, url, historyMessages) {
+    const promptContent = promptTemplates.default(name, url);
     const messages = [
         {
             role: 'system',
@@ -144,10 +156,11 @@ async function createResponse(eventData, quote) {
     contact.addToHistory(role, content);
     let history = trimHistory(contact.history);
     history = trimHistory(history);
-
+    const name = extractNameFromEventData(eventData);
 
     let id = contact.id;
-    const messages = createMessages(eventData, contact, history);
+    const url = `${SHARK_APP_URL}${id}`;
+    const messages = createMessages(name, url, history);
     console.log(`arquivo chat.js messages:\n ${JSON.stringify(messages, null, 2)}`);
     try {
         const completion = await openai.chat.completions.create({
@@ -288,6 +301,27 @@ async function createResponse(eventData, quote) {
         }
     }
 }
+// Fim createResponse()
+
+// function getContact(eventData) {
+//     const fromNumber = eventData.data.fromNumber;
+//     const location = eventData.data.chat.contact.locationInfo.name;
+//     const language = eventData.data.chat.contact.locationInfo.languages;
+//     const currency = eventData.data.chat.contact.locationInfo.currencies;
+//     console.log(` location: ${location}`);
+//     console.log(` language: ${JSON.stringify(language)}`);
+//     console.log(` currency: ${currency}`);
+//     let contact = dataStore.findContactByPhone(fromNumber);
+//     if (!contact) {
+//         console.log('NOVO CONTATO *************');
+//         contact = dataStore.addNewContact(fromNumber, 'free', location, language, currency);
+//         console.log(`contact location: ${contact.getLocation()}`);
+//         console.log(`contact language: ${contact.getLanguage()}`);
+//         console.log(`contact currency: ${contact.getCurrency()}`);
+//     }
+
+//     return contact;
+// }
 
 function isReplyingToThisContact(contact) {
     if (respondingTo.indexOf(contact) === -1) {
