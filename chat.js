@@ -309,7 +309,7 @@ async function main(eventData, quote) {
     console.log('\nMensagem recebida:', eventData.data.body);
     const contact = getContact(eventData);
     //Verifica a quantidade de interacoes
-    if (contact.getSubscriptionPlan() == "free" && contact.getInteractionCount() < 11) {
+    if (contact.getSubscriptionPlan() == "free" && contact.getInteractionCount() < 0) {
         suggestUpsell(eventData);
         removeFromResponding(contact);
         return;
