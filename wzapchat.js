@@ -3,13 +3,15 @@
 
 import fetch from 'node-fetch';
 import dataStore from './dataStore.js';
+import { getContact } from './contactUtils.js';
 
 
-function sendChunkContent(eventData, chunkContent, quote){
+
+function sendChunkContent(eventData, chunkContent, quote) {
     // console.log("quote: "+quote);
     // console.log("Enviando mensagem: "+chunkContent);
     let url = 'https://api.wzap.chat/v1/messages';
-    
+
     let phone = eventData.data.fromNumber;
     let device = eventData.device.id;
     let message = chunkContent;
@@ -20,7 +22,7 @@ function sendChunkContent(eventData, chunkContent, quote){
         order: true,
         message: message,
     };
-    if(quote){
+    if (quote) {
         bodyObj.quote = eventData.data.id;
     }
 
@@ -34,10 +36,10 @@ function sendChunkContent(eventData, chunkContent, quote){
     };
 
     fetch(url, options)
-    .then(res => res.json())
-    // .then(json => console.log(json))
-    // .then(json => console.log("Mensagem enviada: "+chunkContent))
-    .catch(err => console.error('error:' + err));
+        .then(res => res.json())
+        // .then(json => console.log(json))
+        // .then(json => console.log("Mensagem enviada: "+chunkContent))
+        .catch(err => console.error('error:' + err));
 }
 
 function sendReaction(eventData, reaction) {
@@ -65,9 +67,9 @@ function sendReaction(eventData, reaction) {
     };
 
     fetch(url, options)
-    .then(res => res.json())
-    // .then(json => console.log(json))
-    .catch(err => console.error('error:' + err));
+        .then(res => res.json())
+        // .then(json => console.log(json))
+        .catch(err => console.error('error:' + err));
 }
 
 function sendQuote(eventData, message) {
@@ -93,16 +95,16 @@ function sendQuote(eventData, message) {
     };
 
     fetch(url, options)
-    .then(res => res.json())
-    // .then(json => console.log(json))
-    .catch(err => console.error('error:' + err));
+        .then(res => res.json())
+        // .then(json => console.log(json))
+        .catch(err => console.error('error:' + err));
 }
 
-function send(eventData, message){
+function send(eventData, message) {
     // console.log("Enviando mensagem: "+message);
 
     let url = 'https://api.wzap.chat/v1/messages';
-    
+
     let phone = eventData.data.fromNumber;
     let device = eventData.device.id;
 
@@ -124,17 +126,12 @@ function send(eventData, message){
     };
 
     fetch(url, options)
-    .then(res => res.json())
-    // .then(json => console.log(json))
-    // .then(json => console.log("Mensagem enviada: "+message))
-    .catch(err => console.error('error:' + err));
-
-    let fromNumber = eventData.data.fromNumber;  
-    let contact = dataStore.findContactByPhone(fromNumber);
-    if (!contact) {
-        contact = dataStore.addNewContact(fromNumber);
-    }
+        .then(res => res.json())
+        // .then(json => console.log(json))
+        // .then(json => console.log("Mensagem enviada: "+message))
+        .catch(err => console.error('error:' + err));
+    let contact = getContact(eventData);
     contact.addToHistory("assistant", message);
 }
 
-export { sendChunkContent, sendReaction, send, sendQuote};  // Exportando ambas as funções
+export { sendChunkContent, sendReaction, send, sendQuote };  // Exportando ambas as funções

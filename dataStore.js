@@ -3,9 +3,10 @@
 import { v4 as uuidv4 } from 'uuid';
 
 class Contact {
-    constructor(phone, subscriptionPlan = 'free', location = 'Brazil2', language = 'pt-BR', currency = 'BRL', measurementUnit = 'Metric System', temperatureUnit = '°C') {
+    constructor(phone, name = '', subscriptionPlan = 'free', location = 'Brazil', language = 'pt-BR', currency = 'BRL', measurementUnit = 'Metric System', temperatureUnit = '°C') {
         this.id = uuidv4();  // Aqui estamos gerando o UUID.
         this.phone = phone;
+        this.name = name;
         this.history = [];
         this.lastMessage = null; // Armazena a última mensagem enviada pelo contato
         this.subscriptionPlan = subscriptionPlan; // Novo atributo para armazenar o plano de assinatura
@@ -18,6 +19,18 @@ class Contact {
         this.currency = currency;
         this.measurementUnit = measurementUnit;
         this.temperatureUnit = temperatureUnit;
+        this.isStoredInDatabase = false;
+
+    }
+    // Método para obter o nome do contato
+    getName() {
+        return this.name;
+    }
+
+    // Método para definir o nome do contato
+    setName(newName) {
+        this.name = newName;
+        console.log(`Nome atualizado para: ${newName}`);
     }
 
     addToHistory(role, content) {

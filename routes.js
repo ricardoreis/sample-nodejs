@@ -1,9 +1,9 @@
-//routes.js
+//file: routes.js
 import express from 'express';
 import main from './chat.js';
 import { send, sendReaction } from './wzapchat.js';
 import dataStore from './dataStore.js';
-import { saveMessageHistory } from './db.js';
+import { saveMessageHistory, selectContact, insertContact, updateContact } from './db.js';
 import { messageTypes } from './messages.js';
 import { getContact } from './contactUtils.js';
 
@@ -12,7 +12,6 @@ const router = express.Router();
 router.post('/webhook', (req, res) => {
     res.sendStatus(200);
     const eventData = req.body;
-
     // console.log('Dados do Webhook recebidos:');
     // console.log(JSON.stringify(eventData));
     if (eventData && eventData.event === 'message:in:new') {
@@ -32,11 +31,8 @@ router.post('/webhook', (req, res) => {
             }
             send(eventData, "Ouvindo...");
         }
-        // Verificar o tipo de mensagem
-
-        console.log(`routes.js type: ${type}`);
+        // console.log(`routes.js type: ${type}`);
         let quickRespomnse = 'Me ligou? Infelizmente não consigo atender ligação agora, mas me envie um áudio que eu respondo!';
-
         if (messageTypes[type]) {
             console.log(`messageTypes[type]`);
             quickRespomnse = messageTypes[type].response;
@@ -56,19 +52,47 @@ router.post('/webhook', (req, res) => {
 });
 
 router.get('/contacts', (req, res) => {
-    let contactListHTML = '<ul>';
-    const allContacts = dataStore.contacts;
-    for (let contact of allContacts) {
-        contactListHTML += `<li><a href="/api/contact/history/${contact.phone}">${contact.phone}</a></li>`;
-    }
-    contactListHTML += '</ul>';
-    res.send(contactListHTML);
+    res.json(dataStore.contacts);
 });
+
+router.post('/contacts/save', async (req, res) => {
+    let totalContacts = dataStore.contacts.length;
+    let newContacts = 0;
+    let updatedContacts = 0;
+
+    try {
+        for (const contact of dataStore.contacts) {
+            // Check if contact exists in DB
+            const existingContact = await selectContact(contact.phone);
+            if (!existingContact) {
+                // If the contact does not exist, insert it
+                await insertContact(contact.name, contact.phone);
+                newContacts++;
+            } else {
+                // If the contact already exists, update it
+                await updateContact(contact.name, contact.phone);
+                updatedContacts++;
+            }
+        }
+
+        const feedback = `
+            ${totalContacts} contatos em dataStore.
+            ${newContacts} contatos novos inseridos no banco de dados.
+            ${updatedContacts} contatos atualizados.
+        `;
+
+        res.status(200).send(feedback);
+    } catch (err) {
+        console.error('Error saving contacts:', err);
+        res.status(500).send('Internal Server Error. Failed to save contacts.');
+    }
+});
+
+
 
 router.get('/contact/:phone', (req, res) => {
     const phone = req.params.phone;
     const contact = dataStore.findContactByPhone(phone);
-
     if (contact) {
         const contactInfo = {
             id: contact.id,
@@ -79,7 +103,6 @@ router.get('/contact/:phone', (req, res) => {
             waitingTime: contact.getWaitingTime(),
             sendReaction: contact.getSendReaction()
         };
-
         res.json(contactInfo);
     } else {
         res.status(404).json({ message: 'Contact not found' });
@@ -89,7 +112,6 @@ router.get('/contact/:phone', (req, res) => {
 router.get('/id/:id', (req, res) => {
     const id = req.params.id;
     const contact = dataStore.findContactById(id);
-
     if (contact) {
         const contactInfo = {
             id: contact.id,
@@ -100,7 +122,6 @@ router.get('/id/:id', (req, res) => {
             waitingTime: contact.getWaitingTime(),
             sendReaction: contact.getSendReaction()
         };
-
         res.json(contactInfo);
     } else {
         res.status(404).json({ message: 'Contact not found' });

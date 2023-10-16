@@ -1,10 +1,30 @@
-// file: db.js
+// db.js
 
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 import fs from 'fs';
 
 dotenv.config();
+
+// HOSTGATOR
+// ---------
+// const connection = mysql.createPool({
+//     host: process.env.DB_HOST,
+//     user: process.env.DB_USER,
+//     password: process.env.DB_PASSWORD,
+//     database: process.env.DB_NAME
+// });
+
+// export const testConnection = async () => {
+//     try {
+//         await connection.query('SELECT 1');
+//         return true;
+//     } catch (error) {
+//         console.error("Erro ao conectar ao banco de dados:", error);
+//         return false;
+//     }
+// };
+// ---------
 
 // DIGITAL OCEAN
 const connection = mysql.createPool({
@@ -28,55 +48,6 @@ export const testConnection = async () => {
         return false;
     }
 };
-
-export const insertContact = async (name, phone) => {
-    try {
-        const query = 'INSERT INTO contacts (name, phone) VALUES (?, ?)';
-        await connection.execute(query, [name, phone]);
-        console.log('Contato inserido com sucesso!');
-    } catch (err) {
-        console.error("Erro ao inserir o contato:", err);
-        throw err;
-    }
-};
-
-export const selectContact = async (phoneNumber) => {
-    try {
-        const query = 'SELECT * FROM contacts WHERE phone = ?';
-        const [rows] = await connection.query(query, [phoneNumber]);
-        if (rows.length > 0) {
-            return rows[0]; // Retorna o primeiro registro encontrado.
-        }
-        return null; // Retorna null se nenhum registro for encontrado.
-    } catch (err) {
-        console.error("Erro ao buscar o contato:", err);
-        throw err;
-    }
-};
-
-export const updateContact = async (newName, phone) => {
-    try {
-        const query = 'UPDATE contacts SET name = ? WHERE phone = ?';
-        await connection.execute(query, [newName, phone]);
-        console.log('Contato atualizado com sucesso!');
-    } catch (err) {
-        console.error("Erro ao atualizar o contato:", err);
-        throw err;
-    }
-};
-
-
-export async function getContactDetails(phoneNumber) {
-    const contact = await selectContact(phoneNumber);
-    if (contact) {
-        console.log(`Detalhes do contato com o número ${phoneNumber}:`);
-        console.log(`Nome: ${contact.name}`);
-        console.log(`Telefone: ${contact.phone}`);
-        // ... você pode exibir outras colunas da tabela, se houver.
-    } else {
-        console.log(`O contato com o número ${phoneNumber} não foi encontrado no banco de dados.`);
-    }
-}
 
 
 export const insertData = async (data) => {

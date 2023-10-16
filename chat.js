@@ -3,26 +3,22 @@ import dotenv from 'dotenv';
 import OpenAI from 'openai';
 import { sendChunkContent, send, sendReaction } from './wzapchat.js';
 import dataStore from './dataStore.js';
-import { insertEvent } from './db.js';
+import { insertEvent, selectContact, insertContact } from './db.js';
 import { chatTemplates } from './messages.js';
 import { promptTemplates } from './prompts.js';
 import Queue from './queue.js';
 import listenAudio from './listenAudio.js';
 import { searchGoogle } from "./serpAPI.js";
 import { getContact } from './contactUtils.js';
+import * as Config from './config.js';
+import { eliminateSubstring } from './utils.js';
+
 
 dotenv.config();
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const MODEL_NAME = 'gpt-4';
-const UPSALE_LINK_DELAY = 10000;
-const REPLYING_SOON_DELAY = 15000;
-const HISTORY_CHAR_LIMIT = 19000;
-const MAX_CHARACTER_LIMIT = 14000;
-
 
 const openai = new OpenAI({
-    apiKey: OPENAI_API_KEY,
+    apiKey: process.env.OPENAI_API_KEY,
 });
 
 let respondingTo = [];
@@ -38,19 +34,17 @@ function removeFromResponding(contact) {
 function suggestUpsell(eventData) {
     send(eventData, chatTemplates.premiumUpsellMessage);
     insertEvent(eventData);
-    setTimeout(() => send(eventData, chatTemplates.premiumUpsellLink), UPSALE_LINK_DELAY);
-    setTimeout(() => send(eventData, chatTemplates.dontWorryReplyingSoon), REPLYING_SOON_DELAY);
+    setTimeout(() => send(eventData, chatTemplates.premiumUpsellLink), Config.UPSALE_LINK_DELAY);
+    setTimeout(() => send(eventData, chatTemplates.dontWorryReplyingSoon), Config.REPLYING_SOON_DELAY);
 }
 
 
 
-async function handleAudioContent(eventData) {
-    const content = await listenAudio(eventData);
-    return `O usuário enviou um arquivo de áudio. Whisper transcreveu e a seguir está a transcrição: ${content}`;
-}
+
 
 function createMessages(eventData, contact, historyMessages) {
     const promptContent = promptTemplates.default(eventData, contact);
+    // const promptContent = promptTemplates.simple;
     const messages = [
         {
             role: 'system',
@@ -65,7 +59,7 @@ function trimHistory(history) {
     // Calcula o total de caracteres no array de history
     let charCount = history.reduce((sum, message) => sum + JSON.stringify(message).length, 0);
     // Enquanto o total de caracteres for maior que HISTORY_CHAR_LIMIT, remove a mensagem mais antiga
-    while (charCount > HISTORY_CHAR_LIMIT && history.length) {
+    while (charCount > Config.HISTORY_CHAR_LIMIT && history.length) {
         const removedMessage = history.shift(); // Remove e retorna a primeira mensagem
         charCount -= JSON.stringify(removedMessage).length; // Subtrai o tamanho da mensagem removida do total
     }
@@ -93,60 +87,36 @@ function handleContent(eventData) {
     const contact = getContact(eventData);
     let type = eventData.data.type;
     let content = eventData.data.body;
-    if (type == "text" && content.length > MAX_CHARACTER_LIMIT) {
+    if (type == "text" && content.length > Config.MAX_CHARACTER_LIMIT) {
         if (eventData.produtivi.role == 'user') {
-            contact.addToHistory("system", chatTemplates.truncatedMessage.user(MAX_CHARACTER_LIMIT));
+            contact.addToHistory("system", chatTemplates.truncatedMessage.user(Config.MAX_CHARACTER_LIMIT));
         }
         if (eventData.produtivi.role == 'system') {
-            contact.addToHistory("system", chatTemplates.truncatedMessage.system(MAX_CHARACTER_LIMIT));
+            contact.addToHistory("system", chatTemplates.truncatedMessage.system(Config.MAX_CHARACTER_LIMIT));
         }
-        return content.substring(0, MAX_CHARACTER_LIMIT);
+        return content.substring(0, Config.MAX_CHARACTER_LIMIT);
     }
     return content;
 }
 
-const eliminateSubstring = (str, start, end) => {
-    console.log(`chat.js`);
-    console.log(`str: ${str}`);
-    console.log(`start: ${start}`);
-    console.log(`end: ${end}`);
-    console.log(`escapeRegExp(start): ${escapeRegExp(start)}`);
-    console.log(`escapeRegExp(end): ${escapeRegExp(end)}`);
-    const regex = new RegExp(`${escapeRegExp(start)}.*?${escapeRegExp(end)}`, 'gs');
-    console.log(`regex: $regex}`);
-    return str.replace(regex, '');
-}
-
-// Função auxiliar para escapar caracteres especiais em strings para serem usados em expressões regulares
-function escapeRegExp(string) {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& significa a string toda casada
-}
-
-// Recebe mensgem de usuário, cria o array messagens com o prompt, hitorico e ultima mensagem
 async function createResponse(eventData, quote) {
     const contact = getContact(eventData);
     const reactionSettings = contact.getSendReaction();
     let role = 'user'; // ou "assistant" ou "system", dependendo da fonte
-    // let content = eventData.data.body; // entrada dinâmica
     let content = handleContent(eventData);
     const type = eventData.data.type;
 
     if (type == 'audio') {
         role = 'system';
-        content = await handleAudioContent(eventData);
+        content = await listenAudio(eventData);
     }
 
     if (eventData.produtivi && eventData.produtivi.role === 'system') {
-        // Faça algo se 'eventData.produtivi.role' existir e seu valor for 'system'
         role = 'system';
     }
 
     contact.addToHistory(role, content);
     let history = trimHistory(contact.history);
-    history = trimHistory(history);
-
-
-    let id = contact.id;
     const messages = createMessages(eventData, contact, history);
     console.log(`arquivo chat.js messages:\n ${JSON.stringify(messages, null, 2)}`);
     try {
@@ -164,7 +134,6 @@ async function createResponse(eventData, quote) {
         let searchTerm = '';
         if (reactionSettings) {
             sendReaction(eventData, '💬');
-            // setTimeout(() => sendReaction(eventData, '💬'), 3000);
         }
         for await (const chunk of completion) {
             console.log(chunk.choices[0].delta);
@@ -183,15 +152,7 @@ async function createResponse(eventData, quote) {
                     }
                     return;
                 }
-                // Se a possuir uma introdução
                 if (accumulatedContent.includes('INTROSTART')) {
-                    // if (contact.getInteractionCount() < 0) {
-                    //     suggestUpsell(eventData);
-                    //     // Removendo da lista de resposta
-                    //     removeFromResponding(contact);
-                    //     return;
-                    // }
-                    // console.log("Texto da introducao");
                     intro = true;
                     accumulatedContent = accumulatedContent.replace(
                         'INTROSTART',
@@ -199,38 +160,23 @@ async function createResponse(eventData, quote) {
                     );
                 }
 
-
                 if (accumulatedContent.endsWith('INTROEND')) {
                     accumulatedContent = accumulatedContent.replace(
                         'INTROEND',
                         ''
                     );
-                    // console.log("FIM a introdução");
                     sendChunkContent(eventData, accumulatedContent, quote);
                     accumulatedContent = '';
                     intro = false;
                     longAnswer = true;
-                    // contact.decrementInteraction();
-                    // console.log("Quantidade de interações após decrementar:", contact.getInteractionCount());
                 }
-                //STARTGOOGLE
                 if (accumulatedContent.includes('STARTGOOGLE')) {
                     startGoogle = true;
-                    // accumulatedContent = accumulatedContent.replace(
-                    //     'STARTGOOGLE',
-                    //     ''
-                    // );
                 }
                 if (accumulatedContent.endsWith('ENDGOOGLE')) {
                     startGoogle = false;
-                    // accumulatedContent = accumulatedContent.replace(
-                    //     'ENDGOOGLE',
-                    //     ''
-                    // );
-
-                    // Eliminar da mensagem 'STARTGOOGLE termo de busca ENDGOOGLE'
+                    // Eliminar da a substring "STARTGOOGLE {termo de busca} ENDGOOGLE"
                     accumulatedContent = eliminateSubstring(accumulatedContent, "STARTGOOGLE", "ENDGOOGLE");
-
                     searchTerm = searchTerm.replace(
                         'ENDGOOGLE',
                         ''
@@ -252,9 +198,6 @@ async function createResponse(eventData, quote) {
                     firstSentence &&
                     accumulatedContent.match(/[a-z]\.[ \n]/g)
                 ) {
-                    // match(/[a-zA-Z]\.(?![0-9])/)
-                    // Isso funcionou: [a-z]\.[ \n]
-                    // Outra opção     [a-z]\.\s|\.\n
                     firstSentence = false;
                     let str = accumulatedContent;
                     let lastIndex = str.lastIndexOf('.');
@@ -271,6 +214,8 @@ async function createResponse(eventData, quote) {
             sendChunkContent(eventData, accumulatedContent, quote);
             accumulatedContent = '';
         }
+        // Salvar o contato no Banco de Dados ou recuperar o dados
+
         // Decrementando a quantidade de interações
         contact.addToHistory('assistant', response);
         if (reactionSettings) {
@@ -332,7 +277,23 @@ async function main(eventData, quote) {
         }
         // Fim de resposta
         contact.decrementInteraction();
-        console.log(contact.getSubscriptionPlan());
+        // Insere o contato no banco caso ainda nao existir
+        console.log(`isStoredInDatabase: ${contact.isStoredInDatabase}`);
+        if (!contact.isStoredInDatabase) {
+            console.log(`isStoredInDatabase é falso entao verificar se o contato ja esta no banco`);
+            const existingContact = await selectContact(contact.phone);
+            if (!existingContact) {
+                // If the contact does not exist, insert it
+                await insertContact(contact.name, contact.phone);
+                console.log(`contato inserido no banco`);
+                contact.isStoredInDatabase = true;
+
+            } else {
+                console.log(`o contato ja está no banco, nada foi feito`);
+            }
+
+        }
+        // console.log(contact.getSubscriptionPlan());
     }
 }
 
