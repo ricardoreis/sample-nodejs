@@ -1,4 +1,4 @@
 export const UPSALE_LINK_DELAY = 10000;
 export const REPLYING_SOON_DELAY = 15000;
 export const HISTORY_CHAR_LIMIT = 17000;
-export const MAX_CHARACTER_LIMIT = 14000;
+export const MAX_CHARACTER_LIMIT = 12000;
