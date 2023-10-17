@@ -29,7 +29,9 @@ export const testConnection = async () => {
     }
 };
 
-export const insertContact = async (name, phone) => {
+export const insertContact = async (contact) => {
+    const name = contact.name;
+    const phone = contact.phone;
     try {
         const query = 'INSERT INTO contacts (name, phone) VALUES (?, ?)';
         await connection.execute(query, [name, phone]);

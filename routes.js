@@ -34,7 +34,7 @@ router.post('/webhook', (req, res) => {
         // console.log(`routes.js type: ${type}`);
         let quickRespomnse = 'Me ligou? Infelizmente não consigo atender ligação agora, mas me envie um áudio que eu respondo!';
         if (messageTypes[type]) {
-            console.log(`messageTypes[type]`);
+            // console.log(`messageTypes[type]`);
             quickRespomnse = messageTypes[type].response;
         } else {
             console.log('Não temos informações sobre esse tipo de mensagem.');
@@ -45,7 +45,7 @@ router.post('/webhook', (req, res) => {
                 setTimeout(() => sendReaction(eventData, '-'), 3000);
             }
         } else {
-            console.log("chamando main(eventData, false);");
+            // console.log("chamando main(eventData, false);");
             main(eventData, false);
         }
     }

@@ -1,8 +1,8 @@
 // file: chat.js
+
 import dotenv from 'dotenv';
 import OpenAI from 'openai';
 import { sendChunkContent, send, sendReaction } from './wzapchat.js';
-import dataStore from './dataStore.js';
 import { insertEvent, selectContact, insertContact } from './db.js';
 import { chatTemplates } from './messages.js';
 import { promptTemplates } from './prompts.js';
@@ -13,9 +13,7 @@ import { getContact } from './contactUtils.js';
 import * as Config from './config.js';
 import { eliminateSubstring } from './utils.js';
 
-
 dotenv.config();
-
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -23,6 +21,15 @@ const openai = new OpenAI({
 
 let respondingTo = [];
 let queue = new Queue();
+let cancel = false;
+
+function isReplyingToThisContact(contact) {
+    if (respondingTo.indexOf(contact) === -1) {
+        respondingTo.push(contact);
+        return false;
+    }
+    return true;
+}
 
 function removeFromResponding(contact) {
     const index = respondingTo.indexOf(contact);
@@ -38,10 +45,6 @@ function suggestUpsell(eventData) {
     setTimeout(() => send(eventData, chatTemplates.dontWorryReplyingSoon), Config.REPLYING_SOON_DELAY);
 }
 
-
-
-
-
 function createMessages(eventData, contact, historyMessages) {
     const promptContent = promptTemplates.default(eventData, contact);
     // const promptContent = promptTemplates.simple;
@@ -55,16 +58,54 @@ function createMessages(eventData, contact, historyMessages) {
     return messages;
 }
 
+// function trimHistory(history) {
+//     // Calcula o total de caracteres no array de history
+//     let charCount = history.reduce((sum, message) => sum + JSON.stringify(message).length, 0);
+//     // Enquanto o total de caracteres for maior que HISTORY_CHAR_LIMIT, remove a mensagem mais antiga
+//     while (charCount > Config.HISTORY_CHAR_LIMIT && history.length) {
+//         const removedMessage = history.shift(); // Remove e retorna a primeira mensagem
+//         charCount -= JSON.stringify(removedMessage).length; // Subtrai o tamanho da mensagem removida do total
+//     }
+//     return history;
+// }
+
 function trimHistory(history) {
+    // Verifica se 'history' é uma array
+    if (!Array.isArray(history)) {
+        console.error('Invalid type: history is not an array.');
+        return null; // ou você pode optar por retornar 'history' sem modificação, se preferir
+    }
+    // Verifica se 'Config' e 'HISTORY_CHAR_LIMIT' estão definidos
+    if (typeof Config === 'undefined' || !Config.HISTORY_CHAR_LIMIT) {
+        console.error('Config object or HISTORY_CHAR_LIMIT is not defined.');
+        return null; // ou você pode lidar com esse caso de forma diferente, conforme necessário
+    }
+    console.log('Starting with history length:', history.length); // para depuração\
     // Calcula o total de caracteres no array de history
-    let charCount = history.reduce((sum, message) => sum + JSON.stringify(message).length, 0);
+    let charCount = history.reduce((sum, message) => {
+        if (typeof message !== 'object' || message === null) {
+            console.warn('Unexpected type in history array, message skipped:', message);
+            return sum; // não adiciona ao contador se não for um objeto
+        }
+        const messageLength = JSON.stringify(message).length;
+        return sum + messageLength;
+    }, 0);
+    console.log('Initial character count:', charCount);
     // Enquanto o total de caracteres for maior que HISTORY_CHAR_LIMIT, remove a mensagem mais antiga
     while (charCount > Config.HISTORY_CHAR_LIMIT && history.length) {
         const removedMessage = history.shift(); // Remove e retorna a primeira mensagem
-        charCount -= JSON.stringify(removedMessage).length; // Subtrai o tamanho da mensagem removida do total
+        if (typeof removedMessage === 'object' && removedMessage !== null) {
+            charCount -= JSON.stringify(removedMessage).length; // Subtrai o tamanho da mensagem removida do total
+        } else {
+            console.warn('Removed an unexpected type:', removedMessage);
+        }
+        console.log('Removed one item from history. New length:', history.length); // para depuração
     }
-    return history;
+    console.log('Final character count:', charCount);
+    console.log('Trimming complete. Final history length:', history.length);
+    return history; // Retorna o array modificado (ou não modificado, se já estava dentro do limite)
 }
+
 
 function createEventData(eventData, type, content) {
     eventData.data.body = content;
@@ -77,27 +118,72 @@ function createEventData(eventData, type, content) {
     return eventData;
 }
 
-const processResults = (results, eventData) => {
-    let content = `Lista de resultados de busca:\n${JSON.stringify(results, null, 2)}`;
+const processResults = (searchTerm, results, eventData) => {
+    let content = `Lista de resultados de busca para a seguinte query "${searchTerm}":\n${JSON.stringify(results)}`;
     let newEventData = createEventData(eventData, 'text', content);
     main(newEventData, false);
 }
 
+// function handleContent(eventData) {
+//     const contact = getContact(eventData);
+//     let type = eventData.data.type;
+//     let content = eventData.data.body;
+//     if (type == "text" && content.length > Config.MAX_CHARACTER_LIMIT) {
+//         if (eventData.produtivi.role == 'user') {
+//             contact.addToHistory("system", chatTemplates.truncatedMessage.user(Config.MAX_CHARACTER_LIMIT));
+//         }
+//         if (eventData.produtivi.role == 'system') {
+//             contact.addToHistory("system", chatTemplates.truncatedMessage.system(Config.MAX_CHARACTER_LIMIT));
+//         }
+//         return content.substring(0, Config.MAX_CHARACTER_LIMIT);
+//     }
+//     return content;
+// }
+
 function handleContent(eventData) {
-    const contact = getContact(eventData);
-    let type = eventData.data.type;
-    let content = eventData.data.body;
-    if (type == "text" && content.length > Config.MAX_CHARACTER_LIMIT) {
-        if (eventData.produtivi.role == 'user') {
-            contact.addToHistory("system", chatTemplates.truncatedMessage.user(Config.MAX_CHARACTER_LIMIT));
-        }
-        if (eventData.produtivi.role == 'system') {
-            contact.addToHistory("system", chatTemplates.truncatedMessage.system(Config.MAX_CHARACTER_LIMIT));
-        }
-        return content.substring(0, Config.MAX_CHARACTER_LIMIT);
+    // Verificação da existência de 'eventData' e suas propriedades necessárias
+    if (!eventData || !eventData.data) {
+        console.error('!eventData || !eventData.data: Dados do evento inválidos ou inexistentes.');
+        return null; // ou lançar um erro, dependendo de como você deseja lidar com isso
     }
-    return content;
+
+    // Supondo que getContact seja importado ou disponível no escopo global.
+    // Adicione verificações de erro se necessário, dependendo de como getContact funciona.
+    const contact = getContact(eventData);
+
+    const type = eventData.data.type;
+    const content = eventData.data.body;
+
+    // Verificação de 'type' e 'content'
+    if (type === "text" && typeof content === "string") {
+        if (content.length > Config.MAX_CHARACTER_LIMIT) {
+            const rolePath = eventData.produtivi; // Possível necessidade de alterar 'produtivi' se for um erro de digitação
+
+            if (!rolePath || !['user', 'system'].includes(rolePath.role)) {
+                console.error('Role inválida ou inexistente.');
+                return null; // ou lançar um erro
+            }
+
+            if (rolePath.role === 'user') {
+                contact.addToHistory("system", chatTemplates.truncatedMessage.user(Config.MAX_CHARACTER_LIMIT));
+            } else if (rolePath.role === 'system') {
+                contact.addToHistory("system", chatTemplates.truncatedMessage.system(Config.MAX_CHARACTER_LIMIT));
+            }
+
+            // Retorna a mensagem truncada
+            return content.substring(0, Config.MAX_CHARACTER_LIMIT);
+        } else {
+            // Acontece quando o conteúdo é um texto, mas não excede o limite de caracteres
+            console.info('O conteúdo original foi mantido (não excede o limite de caracteres).');
+            return content;
+        }
+    } else {
+        // Acontece quando 'type' não é "text" ou 'content' não é uma string
+        console.warn('Tipo de conteúdo não é texto ou conteúdo não é uma string.');
+        return content; // ou lidar de maneira diferente, dependendo dos requisitos
+    }
 }
+
 
 async function createResponse(eventData, quote) {
     const contact = getContact(eventData);
@@ -105,16 +191,13 @@ async function createResponse(eventData, quote) {
     let role = 'user'; // ou "assistant" ou "system", dependendo da fonte
     let content = handleContent(eventData);
     const type = eventData.data.type;
-
     if (type == 'audio') {
         role = 'system';
         content = await listenAudio(eventData);
     }
-
     if (eventData.produtivi && eventData.produtivi.role === 'system') {
         role = 'system';
     }
-
     contact.addToHistory(role, content);
     let history = trimHistory(contact.history);
     const messages = createMessages(eventData, contact, history);
@@ -183,14 +266,14 @@ async function createResponse(eventData, quote) {
                     );
                     searchGoogle(searchTerm)
                         .then((results) => {
-                            processResults(results, eventData);
+                            processResults(searchTerm, results, eventData);
 
                         })
                         .catch((error) => {
                             console.error("Erro ao buscar os resultados:", error);
                             let errorResult = `Infelizmente, não consegui ler o resultado da busca devido a um erro interno no meu sistema. Vou avisar a minha equipe técnica para corrigir essa falha. Agradeço sua compreensão.\n
                         Mas tente acessar esse link, provavelmente aqui tem o que você precisa: https://www.google.com/search?q=${encodeURIComponent(searchTerm)}`;
-                            processResults(errorResult, eventData);
+                            processResults(searchTerm, errorResult, eventData);
                         });
                 }
                 if (
@@ -234,18 +317,8 @@ async function createResponse(eventData, quote) {
     }
 }
 
-function isReplyingToThisContact(contact) {
-    if (respondingTo.indexOf(contact) === -1) {
-        respondingTo.push(contact);
-        return false;
-    }
-    return true;
-}
-
-let cancel = false;
-
 async function main(eventData, quote) {
-    console.log('\nMensagem recebida:', eventData.data.body);
+    // console.log('\nMensagem recebida:', eventData.data.body);
     const contact = getContact(eventData);
     // Verificação de Interações e Sugestão de Upgrade para Contatos com Plano Gratuito
     if (contact.getSubscriptionPlan() == "free" && contact.getInteractionCount() < 0) {
@@ -275,25 +348,28 @@ async function main(eventData, quote) {
             main(queue.peek(), true);
             queue.dequeue();
         }
-        // Fim de resposta
+        // FIM DA RESPOSTA
         contact.decrementInteraction();
         // Insere o contato no banco caso ainda nao existir
-        console.log(`isStoredInDatabase: ${contact.isStoredInDatabase}`);
+        // console.log(`isStoredInDatabase: ${contact.isStoredInDatabase}`);
+        // console.log(`1 - console dir contact: `);
+        // console.dir(contact);
+        // console.log(`1 FIM - console dir contact: `);
         if (!contact.isStoredInDatabase) {
-            console.log(`isStoredInDatabase é falso entao verificar se o contato ja esta no banco`);
+            contact.isStoredInDatabase = true;
             const existingContact = await selectContact(contact.phone);
             if (!existingContact) {
                 // If the contact does not exist, insert it
-                await insertContact(contact.name, contact.phone);
-                console.log(`contato inserido no banco`);
-                contact.isStoredInDatabase = true;
-
+                await insertContact(contact);
+                // console.log(`contato inserido no banco`);
             } else {
-                console.log(`o contato ja está no banco, nada foi feito`);
+                // console.log(`o contato ja está no banco, pegar informaçoes`);
+                contact.sendReaction = existingContact.sendReaction == 1 ? true : false;
+                contact.subscriptionPlan = existingContact.subscriptionPlan;
+                contact.interactionCount = existingContact.interactionCount;
             }
 
         }
-        // console.log(contact.getSubscriptionPlan());
     }
 }
 

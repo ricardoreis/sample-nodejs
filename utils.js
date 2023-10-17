@@ -1,3 +1,5 @@
+// file: utils.js
+
 // Função auxiliar para escapar caracteres especiais em strings para serem usados em expressões regulares
 function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& significa a string toda casada
