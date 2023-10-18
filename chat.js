@@ -321,8 +321,9 @@ async function main(eventData, quote) {
     // console.log('\nMensagem recebida:', eventData.data.body);
     const contact = getContact(eventData);
     // Verificação de Interações e Sugestão de Upgrade para Contatos com Plano Gratuito
-    if (contact.getSubscriptionPlan() == "free" && contact.getInteractionCount() < 0) {
-        suggestUpsell(eventData);
+    if (contact.getSubscriptionPlan() == "free" && contact.getInteractionCount() < 1) {
+        // suggestUpsell(eventData);
+        send(eventData, chatTemplates.endFreeMessages)
         removeFromResponding(contact);
         return;
     }
@@ -334,7 +335,7 @@ async function main(eventData, quote) {
         const currentDate = new Date(currentMessage.timestamp);
         const differenceInMillis = currentDate - previousDate;
 
-        if (differenceInMillis < 10 * 1000) {
+        if (differenceInMillis < 1 * 1000) {
             cancel = true;
             await createResponse(eventData, quote);
         } else {

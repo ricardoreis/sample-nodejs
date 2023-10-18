@@ -4,7 +4,9 @@ import { v4 as uuidv4 } from 'uuid';
 
 class Contact {
     constructor(phone, name = '', subscriptionPlan = 'free', location = 'Brazil', language = 'pt-BR', currency = 'BRL', measurementUnit = 'Metric System', temperatureUnit = '°C') {
-        this.id = uuidv4();  // Aqui estamos gerando o UUID.
+        this.id = '';
+        this.iv = '';
+        this.hash = '';
         this.phone = phone;
         this.name = name;
         this.history = [];

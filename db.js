@@ -6,6 +6,7 @@ import fs from 'fs';
 
 dotenv.config();
 
+
 // DIGITAL OCEAN
 const connection = mysql.createPool({
     host: process.env.DB_HOST,
@@ -32,9 +33,11 @@ export const testConnection = async () => {
 export const insertContact = async (contact) => {
     const name = contact.name;
     const phone = contact.phone;
+    const iv = contact.iv;
+    const hash = contact.hash;
     try {
-        const query = 'INSERT INTO contacts (name, phone) VALUES (?, ?)';
-        await connection.execute(query, [name, phone]);
+        const query = 'INSERT INTO contacts (name, phone, iv, hash) VALUES (?, ?, ?, ?)';
+        await connection.execute(query, [name, phone, iv, hash]);
         console.log('Contato inserido com sucesso!');
     } catch (err) {
         console.error("Erro ao inserir o contato:", err);

@@ -61,5 +61,7 @@ Por favor, reduza o tamanho do texto e me envie novamente.`,
 
     truncatedMessage: truncatedMessage,
 
+    endFreeMessages: `Você atingiu o limite de uso gratuito. Aguarde aproximadamente 4 horas para poder enviar novas mensagens.`
+
 };
 

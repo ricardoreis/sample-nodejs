@@ -1,4 +1,12 @@
 import dataStore from './dataStore.js';
+import { encryptNumber, decryptNumber } from './encryptor.js';
+import { config } from 'dotenv';
+
+config();
+
+const secretPrivateKey = process.env.SECRET_PRIVATE_KEY;
+
+
 
 function extractNameFromEventData(eventData) {
     const notifyName = eventData.data.meta.notifyName;
@@ -14,9 +22,11 @@ function getContact(eventData) {
         const location = eventData.data.chat.contact.locationInfo.name;
         const language = eventData.data.chat.contact.locationInfo.languages;
         const currency = eventData.data.chat.contact.locationInfo.currencies;
+        const { iv, encryptedNumber } = encryptNumber(fromNumber, secretPrivateKey);
         const name = extractNameFromEventData(eventData);
         contact = dataStore.addNewContact(fromNumber, name, 'free', location, language, currency);
-
+        contact.iv = iv;
+        contact.hash = encryptedNumber;
     }
 
     return contact;
