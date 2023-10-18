@@ -12,7 +12,7 @@ class Contact {
         this.history = [];
         this.lastMessage = null; // Armazena a última mensagem enviada pelo contato
         this.subscriptionPlan = subscriptionPlan; // Novo atributo para armazenar o plano de assinatura
-        this.interactionCount = 10; // Novo atributo para armazenar a quantidade de interações
+        this.interactionCount = 30; // Novo atributo para armazenar a quantidade de interações
         this.waitCount = 1;
         this.waitingTime = null;
         this.sendReaction = true;
