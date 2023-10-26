@@ -149,16 +149,11 @@ function handleContent(eventData) {
         console.error('!eventData || !eventData.data: Dados do evento inválidos ou inexistentes.');
         return null; // ou lançar um erro, dependendo de como você deseja lidar com isso
     }
-
     // Supondo que getContact seja importado ou disponível no escopo global.
     // Adicione verificações de erro se necessário, dependendo de como getContact funciona.
     const contact = getContact(eventData);
-
     const type = eventData.data.type;
     const content = eventData.data.body;
-
-
-
     // Verificação de 'type' e 'content'
     if (type === "text" && typeof content === "string") {
         if (content.includes("Dfg9878")) {
@@ -200,15 +195,19 @@ async function createResponse(eventData, quote) {
     const contact = getContact(eventData);
     const reactionSettings = contact.getSendReaction();
     let role = 'user'; // ou "assistant" ou "system", dependendo da fonte
-    let content = handleContent(eventData);
-    if (!content) {
-        return;
-    }
     const type = eventData.data.type;
+    let content = '';
     if (type == 'audio') {
         role = 'system';
         content = await listenAudio(eventData);
+    } else {
+        content = handleContent(eventData);
     }
+
+    if (!content) {
+        return;
+    }
+
     if (eventData.produtivi && eventData.produtivi.role === 'system') {
         role = 'system';
     }
