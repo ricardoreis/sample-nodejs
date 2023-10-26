@@ -39,10 +39,13 @@ function removeFromResponding(contact) {
 }
 
 function suggestUpsell(eventData) {
-    send(eventData, chatTemplates.premiumUpsellMessage);
-    insertEvent(eventData);
+    sendReaction(eventData, '💬');
+    send(eventData, chatTemplates.endFreeMessages)
     setTimeout(() => send(eventData, chatTemplates.premiumUpsellLink), Config.UPSALE_LINK_DELAY);
-    setTimeout(() => send(eventData, chatTemplates.dontWorryReplyingSoon), Config.REPLYING_SOON_DELAY);
+    setTimeout(() => send(eventData, chatTemplates.callToAction), Config.REPLYING_SOON_DELAY);
+    setTimeout(() => sendReaction(eventData, '-'), Config.REPLYING_SOON_DELAY);
+
+    // setTimeout(() => send(eventData, chatTemplates.dontWorryReplyingSoon), Config.REPLYING_SOON_DELAY);
 }
 
 function createMessages(eventData, contact, historyMessages) {
@@ -154,8 +157,16 @@ function handleContent(eventData) {
     const type = eventData.data.type;
     const content = eventData.data.body;
 
+
+
     // Verificação de 'type' e 'content'
     if (type === "text" && typeof content === "string") {
+        if (content.includes("Dfg9878")) {
+            send(eventData, "Ok! nossa equipe já está verificando as informações de pagamento e em breve você terá acesso ao serviço. Por favor, aguarde um momento. Agradecemos pela sua paciência!")
+            eventData.data.fromNumber = "+555198669809";
+            send(eventData, "Alguém pagou!");
+            return;
+        }
         if (content.length > Config.MAX_CHARACTER_LIMIT) {
             const rolePath = eventData.produtivi; // Possível necessidade de alterar 'produtivi' se for um erro de digitação
 
@@ -167,7 +178,7 @@ function handleContent(eventData) {
             if (rolePath.role === 'user') {
                 contact.addToHistory("system", chatTemplates.truncatedMessage.user(Config.MAX_CHARACTER_LIMIT));
             } else if (rolePath.role === 'system') {
-                contact.addToHistory("system", chatTemplates.truncatedMessage.system(Config.MAX_CHARACTER_LIMIT));
+                // contact.addToHistory("system", chatTemplates.truncatedMessage.system(Config.MAX_CHARACTER_LIMIT));
             }
 
             // Retorna a mensagem truncada
@@ -190,6 +201,9 @@ async function createResponse(eventData, quote) {
     const reactionSettings = contact.getSendReaction();
     let role = 'user'; // ou "assistant" ou "system", dependendo da fonte
     let content = handleContent(eventData);
+    if (!content) {
+        return;
+    }
     const type = eventData.data.type;
     if (type == 'audio') {
         role = 'system';
@@ -321,9 +335,8 @@ async function main(eventData, quote) {
     // console.log('\nMensagem recebida:', eventData.data.body);
     const contact = getContact(eventData);
     // Verificação de Interações e Sugestão de Upgrade para Contatos com Plano Gratuito
-    if (contact.getSubscriptionPlan() == "free" && contact.getInteractionCount() < 1) {
-        // suggestUpsell(eventData);
-        send(eventData, chatTemplates.endFreeMessages)
+    if (contact.getSubscriptionPlan() == "free" && contact.getInteractionCount() == 0) {
+        suggestUpsell(eventData);
         removeFromResponding(contact);
         return;
     }

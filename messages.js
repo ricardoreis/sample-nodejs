@@ -50,9 +50,9 @@ export const chatTemplates = {
 Se quiser prioridade, considere se tornar um cliente Premium. Você terá respostas imediatas e outras vantagens exclusivas! 
 `,
 
-    premiumUpsellLink: `Para se tornar Premium, clique aqui.
-    👇
-    https://produtivi.com.br/`,
+    premiumUpsellLink: `https://produtivi.com.br/html/pricing.html?back=1`,
+
+    callToAction: `Clique no link para ver os planos e fazer sua assinatura.`,
 
     dontWorryReplyingSoon: `Mas não se preocupe, vou responder à sua mensagem assim que possível.`,
 
@@ -61,7 +61,7 @@ Por favor, reduza o tamanho do texto e me envie novamente.`,
 
     truncatedMessage: truncatedMessage,
 
-    endFreeMessages: `Você atingiu o limite de uso gratuito. Aguarde aproximadamente 4 horas para poder enviar novas mensagens.`
+    endFreeMessages: `Você atingiu o limite de uso gratuito. Para continuar usando o serviço, considere assinar um dos nossos planos. Você terá respostas imediatas e outras vantagens exclusivas!`
 
 };
 
