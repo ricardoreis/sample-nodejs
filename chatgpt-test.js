@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 
-const OPENAI_API_KEY = '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';
+const OPENAI_API_KEY = '';
 const openai = new OpenAI(OPENAI_API_KEY);
 
 async function getChatCompletion(prompt) {
