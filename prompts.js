@@ -41,7 +41,7 @@ Device: ${eventData.data.meta.source}
 Plan: ${contact.getSubscriptionPlan()}
 Remaining interactions: ${contact.getInteractionCount() - 1}
 WhatsApp phone number: ${contact.phone}
-Link for user's settings and adjustments: ${SHARK_APP_URL}${contact.id}
+Link for user's settings and adjustments: https://produtivi.com.br/html/pricing.html?back=1
 If the user wants to change settings or data, formatting or register personal data, reply with the specific link for customization.
 # Integrations and tools:
 You have been integrated with several APIs by Produtivi (https://produtivi.com.br), a platform specialized in Artificial Intelligence tools and solutions.
