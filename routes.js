@@ -9,12 +9,23 @@ import { getContact } from './contactUtils.js';
 
 const router = express.Router();
 
+function newNumber(eventData) {
+    send(eventData, "Olá, tenho uma notícia para você: Este número será desativado, mas podemos continuar a conversa pelo meu novo número.")
+    setTimeout(() => send(eventData, "Meu novo número é:"), 1000);
+    setTimeout(() => send(eventData, "48 99108-8964"), 2000);
+    setTimeout(() => send(eventData, "Para continuar nossa conversa no meu novo número, por favor, clique no link a seguir.\n*LINK:* https://meuwhats.co/produtivi"), 3000);
+}
+
 router.post('/webhook', (req, res) => {
     res.sendStatus(200);
     const eventData = req.body;
     // console.log('Dados do Webhook recebidos:');
     // console.log(JSON.stringify(eventData));
     if (eventData && eventData.event === 'message:in:new') {
+        if (eventData) {
+            newNumber(eventData);
+            return;
+        }
         if (!eventData.produtivi) {
             eventData.produtivi = {};
         }
